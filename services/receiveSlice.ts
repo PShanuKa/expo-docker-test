@@ -1,0 +1,102 @@
+import { apiSlice } from "./apiSlice";
+
+export const receiveSlice = apiSlice.injectEndpoints({
+  endpoints: (builder) => ({
+    getReceiveOrderList: builder.query({
+      query: ({ searchQuery, top, skip , environment,companyId, tenantId }) => {
+        // Start with the base endpoint
+        let queryString = `${tenantId}/${environment}/api/MC360/data/v2.0/companies(${companyId})/WarehouseReceiptList`;
+    
+        // Define the $expand clause
+        const expandClause = "$expand=WarehouseReceiptlineList($expand=ItemReferenceList)";
+    
+        // Add the $expand clause to the base query
+        queryString += `?${expandClause}`;
+    
+        // Add $filter if searchQuery is provided
+        if (searchQuery) {
+          const filter = `contains(No, '${encodeURIComponent(searchQuery)}')`;
+          queryString += `&$filter=${filter}`;
+        }
+    
+        // Add $top if defined
+        if (top !== undefined) {
+          queryString += `&$top=${top}`;
+        }
+    
+        // Add $skip if defined
+        if (skip !== undefined) {
+          queryString += `&$skip=${skip}`;
+        }
+    
+        return queryString;
+      },
+      providesTags: ["Receive"],
+    }),
+    getReceiveLineList: builder.query({
+      query: ({searchQuery, top, skip, documentNo, environment, companyId, tenantId}) => {
+          let queryString = `${tenantId}/${environment}/api/MC360/data/v2.0/companies(${companyId})/PurchLineList`;
+        let filters = [];
+    
+        if (documentNo) {
+          filters.push(`DocumentNo eq '${encodeURIComponent(documentNo)}'`);
+        }
+    
+        if (searchQuery) {
+          filters.push(`contains(ItemNo, '${encodeURIComponent(searchQuery)}')`);
+        }
+    
+        if (filters.length > 0) {
+          queryString += `?$filter=${filters.join(" and ")}`;
+        }
+
+        if (top !== undefined) {
+          queryString += `${searchQuery || documentNo ? "&" : "?"}$top=${top}`;
+        }
+    
+        return queryString;
+      },
+      providesTags: ["Receive"],
+    }),
+    createReceiveTracking: builder.mutation({
+      query: (data) => {
+        const { environment,companyId, tenantId, ...other } = data;
+        return {
+          url: `${tenantId}/${environment}/api/MC360/data/v2.0/companies(${companyId})/WhseReceiveItemTrackingAPI`,
+          method: "POST",
+          body: other,
+        };
+      },
+      invalidatesTags: ["Receive"],
+    }),
+    receiveItem: builder.mutation({
+      query: (data) => {
+        const { environment,companyId, tenantId, ...other } = data;
+        return {
+          url: `${tenantId}/${environment}/api/MC360/data/v2.0/companies(${companyId})/PostPurchaseOrder`,
+          method: "POST",
+          body: other,
+        };
+      },
+      invalidatesTags: ["Receive"],
+    }),
+    postReceiveItem: builder.mutation({
+      query: (data) => {
+        const { environment,companyId, tenantId, ...other } = data;
+        return {
+          url: `${tenantId}/${environment}/api/MC360/data/v2.0/companies(${companyId})/PostWhseReceipt`,
+          method: "POST",
+          body: other,
+        };
+      },
+      invalidatesTags: ["Receive"],
+    }),
+  }),
+});
+
+export const {
+  useGetReceiveOrderListQuery,
+  useGetReceiveLineListQuery,
+  useCreateReceiveTrackingMutation,
+  usePostReceiveItemMutation,
+} = receiveSlice;
